@@ -1,0 +1,229 @@
+# Product goal and MVP definition
+
+## 1. Goal
+Reduce volunteer no-shows and last-minute understaffing at food pantries by making shifts easy to publish, easy to claim, and hard to forget (via reminders + confirmations), while giving managers visibility and backup coverage.  
+
+### 1.1. MVP success metrics (define upfront)
+- No-show rate: baseline vs after launch (e.g., reduce by 25–40%)
+- Fill rate: % of shifts meeting minimum required volunteers 24 hours before start
+- Confirmation rate: % of volunteers who click “Confirm” before shift
+- Time-to-backfill: average time to fill a cancelled slot (using on-call)
+
+### 1.2. MVP scope (what to build first)
+
+#### MVP includes
+1.	Pantry creates shifts (role, time, needed count)  
+2.	Public volunteer signup link (name/phone/email)  
+3.	Automated reminders (T-48h and same-day) with Confirm/Cancel  
+4.	Manager attendance marking after shift  
+5.	Reliability score (simple)  
+6.	On-call list + broadcast when understaffed  
+
+#### Defer (V1.1+)
+- Auto overbooking based on history  
+- Multi-location pantries, complex roles permissions, recurring shift templates, deep analytics dashboards, integrations (Google Calendar), etc.
+
+## 2. Personas and core jobs-to-be-done
+### 2.1. Pantry Manager (Admin)
+- Create/edit shifts, see staffing status, message volunteers, mark attendance, view reliability.
+### 2.2. Shift Lead (Staff/Volunteer with permissions)
+- View roster for a day, check-in volunteers on site, request backups if needed.
+### 2.3. Volunteer
+- Browse available shifts, sign up fast, confirm/cancel from phone, opt into on-call.
+
+## 3. Functional requirements
+
+### 3.1. Shift Management
+Entities
+- Pantry (org)
+- Role (e.g., Packing, Check-in, Sorting)
+- Shift (date/time, role, required_count, optional max_count)
+Features
+- Create shift: title/role, start/end time, required volunteer count
+- Edit shift: time/capacity/role (with rules if volunteers already signed up)
+- Cancel shift: notify signed-up volunteers
+- Shift status: Open, Full, Closed, Cancelled, InProgress, Completed
+Rules
+- Signups allowed until configurable cutoff (default: 2 hours before start)
+- Capacity: required_count = target; max_count optional (for future overbooking)
+
+### 3.2. Volunteer Signup (Public)
+- Public page lists open shifts (mobile-friendly)
+- Volunteer fields (MVP):
+  - Full name (required)
+  - Phone (required for SMS reminders)
+  - Email (optional but recommended)
+- After signup:
+  - Create a Signup record
+  - Send confirmation message
+  - Provide “Manage my signup” link (magic link token)
+Anti-abuse
+- Rate-limit signups per phone/email
+- CAPTCHA optional (can defer until needed)
+
+### 3.3. Reminders + Confirm/Cancel
+Reminder schedule (configurable)
+- T-48 hours
+- T-6 hours or same-day morning (choose one for MVP)
+Message content includes
+- Shift details
+- Two actions: Confirm / Cancel
+Action handling
+- Confirm → status becomes Confirmed
+- Cancel → status becomes Cancelled and slot opens
+- If no action → status remains Pending
+Edge case rules
+- If volunteer cancels within X hours of shift start, tag as LateCancel (optional in MVP; can just record timestamp)
+
+### 3.4. Attendance Tracking
+- Attendance marking UI for Admin/Lead:
+  - ShowedUp, NoShow, Late, Excused, Cancelled
+- Lock attendance after N days (optional)
+- Export attendance CSV (nice-to-have but helpful for ops)
+
+### 3.5. Reliability Score (Simple, MVP-safe)
+
+A straightforward scoring model (transparent, easy to explain):
+- Start at 100
+- -20 for NoShow
+- -10 for LateCancel (if implemented)
+- -5 for Late
+- +2 for ShowedUp (cap at 100)
+
+Store:
+- score_current
+- total_shifts_signed_up
+- total_showed
+- total_no_show
+
+Use:
+- Admin roster view shows badge: Highly reliable / OK / Risky based on thresholds.
+
+### 3.6. On-call / Backup List
+- Volunteers can toggle “I’m on-call” with preferred days/times (MVP: just a boolean + optional availability notes)
+- Admin can trigger broadcast:
+  - target: on-call volunteers
+  - message: “We need 2 people today 3–6pm. Reply YES to join.”
+- First responders fill open slots:
+  - Option A (simpler): first N “YES” automatically added
+  - Option B (safer): collect responders → Admin clicks “Add” (recommended MVP)
+
+
+
+## 4. Non-functional requirements
+
+### 4.1. Reliability & delivery
+- SMS/email delivery tracking: sent, delivered (if provider supports), failed
+- Retry strategy for transient failures
+- Idempotent endpoints for confirm/cancel links
+
+### 4.2. Security & privacy
+- Magic-link tokens for volunteer actions (no passwords for volunteers)
+- Admin authentication (email/password or Google OAuth)
+- Store only necessary PII (name, phone, email), encrypt at rest if possible
+- Basic audit log: who changed shift, who marked attendance
+
+### 4.3. Compliance notes (pragmatic)
+- SMS opt-out language (“Reply STOP”) if using providers like Twilio
+- Consent checkbox during signup: “I agree to receive shift reminders by SMS/email.”
+
+
+
+## 5. Primary user journeys
+
+### Journey A: Create and publish shifts
+1.	Admin logs in → creates shift(s) with date/time/role/capacity
+2.	Admin shares a public signup link (per pantry or per event/day)
+### Journey B: Volunteer signs up and gets reminders
+1.	Volunteer opens link → sees list/calendar of shifts
+2.	Picks shift → enters name + phone + email → submits
+3.	Gets confirmation message immediately
+4.	Gets reminder messages with Confirm/Cancel
+5.	If cancels → slot reopens automatically
+### Journey C: Day-of operations + attendance + reliability
+1.	Admin/Lead views roster
+2.	After shift ends → marks each signup as Show/No-show/Late/Excused
+3.	Reliability score updates
+### Journey D: On-call backfill
+1.	Shift becomes understaffed (cancellations/no confirmations)
+2.	Admin triggers “Request on-call”
+3.	System messages on-call list
+4.	First X responders are added to shift (or Admin approves, depending on safety preference)
+ 
+## 6. User stories
+
+### Admin stories
+- As an Admin, I can create a shift with date/time/role/capacity so volunteers can sign up.
+- As an Admin, I can share a signup link so volunteers can access shifts without logging in.
+- As an Admin, I can view a roster for each shift so I know who is coming.
+- As an Admin, I can see which volunteers confirmed so I can forecast staffing.
+- As an Admin, I can mark attendance after the shift so the system can track reliability.
+- As an Admin, I can trigger an on-call request if staffing drops so I can backfill quickly.
+
+### Volunteer stories
+- As a Volunteer, I can view available shifts on my phone so I can pick one quickly.
+- As a Volunteer, I can sign up with my name/phone/email so I receive reminders.
+- As a Volunteer, I can confirm via a link so the pantry knows I’m coming.
+- As a Volunteer, I can cancel via a link so the slot opens for someone else.
+- As a Volunteer, I can opt into on-call so I can help when emergencies happen.
+
+### System stories (backend)
+- As the System, I send confirmation messages immediately after signup.
+- As the System, I send reminder messages at configured times.
+- As the System, I update signup status when a volunteer confirms/cancels.
+- As the System, I log message delivery + link clicks for troubleshooting/auditing.
+ 
+ 
+<!-- ## 7) Data model (tables / collections)
+
+Pantry
+- id, name, timezone, public_signup_slug, created_at
+
+User (Admin/Lead)
+- id, pantry_id, name, email, role (ADMIN/LEAD), password_hash/oauth, created_at
+
+Volunteer
+- id, pantry_id, name, phone, email, on_call (bool), reliability_score, stats_json, created_at
+
+Shift
+- id, pantry_id, role, title, start_at, end_at, required_count, max_count, status, created_at
+
+Signup
+- id, shift_id, volunteer_id
+- status: Pending | Confirmed | Cancelled | CheckedIn | NoShow | Excused | Late
+- created_at, confirmed_at, cancelled_at
+- manage_token_hash (or separate token table)
+
+MessageLog
+- id, pantry_id, volunteer_id, shift_id, channel (SMS/Email)
+- type: Confirmation | Reminder48h | ReminderDayOf | OnCallRequest
+- provider_message_id, status, error, sent_at -->
+ 
+<!-- ## 8) API specification (example endpoints)
+
+Public
+- GET /p/{public_slug}/shifts?from=...&to=...
+- POST /shifts/{shift_id}/signups
+  - body: name, phone, email
+- GET /signups/manage/{token} (shows details)
+- POST /signups/{signup_id}/confirm (token-based)
+- POST /signups/{signup_id}/cancel (token-based)
+
+Admin
+- POST /admin/shifts
+- PATCH /admin/shifts/{id}
+- GET /admin/shifts/{id}/roster
+- POST /admin/shifts/{id}/attendance
+- POST /admin/shifts/{id}/oncall/broadcast -->
+ 
+
+<!-- 
+## What to build first (MVP build order)
+1.	Shift CRUD + public list
+2.	Signup + confirmation message
+3.	Tokenized confirm/cancel links
+4.	Reminder scheduler + MessageLog
+5.	Admin roster + attendance marking
+6.	Reliability scoring
+7.	On-call broadcast + responder capture -->
+
