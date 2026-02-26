@@ -1,0 +1,150 @@
+# ===============================
+# macOS SYSTEM FILES
+# ===============================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# ===============================
+# PYTHON
+# ===============================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+pyrightconfig.json
+
+# ===============================
+# VIRTUAL ENVIRONMENTS
+# ===============================
+venv/
+ENV/
+env/
+.venv/
+env.bak/
+venv.bak/
+
+# ===============================
+# FLASK
+# ===============================
+instance/
+.webassets-cache
+
+# Flask environment files
+.env
+.env.*
+*.env
+
+# Local settings
+config.py
+
+# ===============================
+# DATABASE FILES
+# ===============================
+*.db
+*.sqlite3
+
+# ===============================
+# LOG FILES
+# ===============================
+*.log
+logs/
+log/
+
+# ===============================
+# IDE / EDITOR FILES
+# ===============================
+
+# VSCode
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+
+# Sublime
+*.sublime-project
+*.sublime-workspace
+
+# ===============================
+# JUPYTER NOTEBOOK
+# ===============================
+.ipynb_checkpoints
+
+# ===============================
+# NODE (if you add frontend later)
+# ===============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===============================
+# DOCKER
+# ===============================
+*.pid
+*.seed
+*.pid.lock
+
+# ===============================
+# CACHES
+# ===============================
+.cache/
+*.cache
+
+# ===============================
+# OS TEMP FILES
+# ===============================
+*.swp
+*.swo
+*~
