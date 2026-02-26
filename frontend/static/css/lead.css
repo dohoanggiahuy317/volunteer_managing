@@ -1,0 +1,98 @@
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .calendar-week {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .calendar-week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.day-column {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(15, 23, 42, 0.9);
+  min-height: 140px;
+}
+
+.day-header {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.day-list {
+  padding: 0.5rem 0.75rem 0.7rem;
+}
+
+.day-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.shift-card {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+  font-size: 0.85rem;
+}
+
+.shift-card:last-child {
+  border-bottom: none;
+}
+
+.shift-role {
+  font-weight: 600;
+}
+
+.shift-time {
+  color: #e5e7eb;
+}
+
+.shift-meta {
+  color: #9ca3af;
+}
+
+.pantry-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pantry-select {
+  min-width: 180px;
+}
+
+.create-panel {
+  margin-top: 2rem;
+  max-width: 440px;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.create-panel h2 {
+  margin-top: 0;
+}
+
+.form-message {
+  min-height: 1.2rem;
+}

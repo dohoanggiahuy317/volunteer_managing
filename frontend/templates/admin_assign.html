@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Super Admin – Assign Pantries</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="header">
+        <div class="header-left">
+          <span class="logo">Pantry</span>
+          <span class="title">Super Admin – Assign Pantries</span>
+        </div>
+      </header>
+      <main class="main">
+        <section class="assign-section">
+          <h1>Assign Pantry Lead</h1>
+          <div class="assign-form">
+            <div class="form-group">
+              <label for="lead-select">Pantry Lead</label>
+              <select id="lead-select"></select>
+            </div>
+            <div class="form-group">
+              <label for="pantry-select-admin">Pantry</label>
+              <select id="pantry-select-admin"></select>
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" id="assign-btn" type="button">Assign</button>
+              <button class="btn-secondary" id="clear-lead-btn" type="button">Clear Lead</button>
+            </div>
+            <div class="form-message" id="assign-message"></div>
+          </div>
+
+          <h2>Current assignments</h2>
+          <table class="assign-table" id="assign-table">
+            <thead>
+              <tr>
+                <th>Pantry</th>
+                <th>Slug</th>
+                <th>Lead Email</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+    <script src="{{ url_for('static', filename='js/admin_assign.js') }}"></script>
+  </body>
+</html>

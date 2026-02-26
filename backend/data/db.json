@@ -1,0 +1,14 @@
+{
+  "users": [
+    { "id": 1, "email": "courtney@licking-county-pantry.org", "role": "PANTRY_LEAD" },
+    { "id": 2, "email": "james@northside-pantry.org", "role": "PANTRY_LEAD" },
+    { "id": 3, "email": "maria@southpoint-pantry.org", "role": "PANTRY_LEAD" },
+    { "id": 4, "email": "super@example.org", "role": "SUPER_ADMIN" }
+  ],
+  "pantries": [
+    { "id": 1, "name": "Licking County Pantry", "slug": "licking-county-pantry", "lead_id": 1 },
+    { "id": 2, "name": "Northside Pantry", "slug": "northside-pantry", "lead_id": 2 },
+    { "id": 3, "name": "Southpoint Pantry", "slug": "southpoint-pantry", "lead_id": null }
+  ],
+  "shifts": []
+}
