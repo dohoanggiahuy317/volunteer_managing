@@ -1,0 +1,111 @@
+// User Authentication and Profile Functions
+
+/**
+ * Get current user information
+ * Returns: { user_id, full_name, email, roles: [...] }
+ */
+async function getCurrentUser() {
+    try {
+        const user = await apiGet('/api/me');
+        return user;
+    } catch (error) {
+        console.error('Failed to get current user:', error);
+        throw error;
+    }
+}
+
+/**
+ * Check if user has a specific role
+ */
+function userHasRole(user, roleName) {
+    if (!user || !user.roles) return false;
+    // API returns roles as array of strings: ["ADMIN", "PANTRY_LEAD"]
+    return user.roles.includes(roleName);
+}
+
+/**
+ * Display current user information in the UI
+ */
+function displayCurrentUser(user, emailElementId = 'user-email', roleElementId = 'user-role') {
+    const emailEl = document.getElementById(emailElementId);
+    const roleEl = document.getElementById(roleElementId);
+    
+    if (emailEl) emailEl.textContent = user.email;
+    
+    if (roleEl) {
+        // roles is array of strings: ["ADMIN", "PANTRY_LEAD"]
+        const roleNames = user.roles.join(', ');
+        roleEl.textContent = roleNames || 'No Role';
+    }
+}
+
+/**
+ * Get all users (admin only)
+ */
+async function getAllUsers(roleFilter = null) {
+    try {
+        let path = '/api/users';
+        if (roleFilter) {
+            path += `?role=${encodeURIComponent(roleFilter)}`;
+        }
+        const users = await apiGet(path);
+        return users;
+    } catch (error) {
+        console.error('Failed to get users:', error);
+        throw error;
+    }
+}
+
+/**
+ * Create a new user
+ */
+async function createUser(userData) {
+    try {
+        const data = await apiPost('/api/users', userData);
+        return data.user;
+    } catch (error) {
+        console.error('Failed to create user:', error);
+        throw error;
+    }
+}
+
+/**
+ * Assign role to user
+ */
+async function assignRole(userId, roleId) {
+    try {
+        const data = await apiPost(`/api/users/${userId}/roles`, { role_id: roleId });
+        return data;
+    } catch (error) {
+        console.error('Failed to assign role:', error);
+        throw error;
+    }
+}
+
+/**
+ * Remove role from user
+ */
+async function removeRole(userId, roleId) {
+    try {
+        await apiDelete(`/api/users/${userId}/roles/${roleId}`);
+    } catch (error) {
+        console.error('Failed to remove role:', error);
+        throw error;
+    }
+}
+
+/**
+ * Ensure user has required role (throws error if not)
+ */
+function ensureUserRole(user, roleName) {
+    if (!userHasRole(user, roleName)) {
+        throw new Error(`User does not have required role: ${roleName}`);
+    }
+}
+
+/**
+ * Get user's display name (full_name or email)
+ */
+function getUserDisplayName(user) {
+    return user.full_name || user.email || 'Unknown User';
+}

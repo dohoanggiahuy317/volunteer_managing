@@ -1,14 +1,40 @@
 {
   "users": [
-    { "id": 1, "email": "courtney@licking-county-pantry.org", "role": "PANTRY_LEAD" },
-    { "id": 2, "email": "james@northside-pantry.org", "role": "PANTRY_LEAD" },
-    { "id": 3, "email": "maria@southpoint-pantry.org", "role": "PANTRY_LEAD" },
-    { "id": 4, "email": "super@example.org", "role": "SUPER_ADMIN" }
+    { "user_id": 1, "full_name": "Courtney Johnson", "email": "courtney@licking-county-pantry.org", "password_hash": "hashed_pwd_1", "is_active": true, "created_at": "2024-01-01T00:00:00Z" },
+    { "user_id": 2, "full_name": "James Smith", "email": "james@northside-pantry.org", "password_hash": "hashed_pwd_2", "is_active": true, "created_at": "2024-01-01T00:00:00Z" },
+    { "user_id": 3, "full_name": "Maria Garcia", "email": "maria@southpoint-pantry.org", "password_hash": "hashed_pwd_3", "is_active": true, "created_at": "2024-01-01T00:00:00Z" },
+    { "user_id": 4, "full_name": "Admin User", "email": "super@example.org", "password_hash": "hashed_pwd_4", "is_active": true, "created_at": "2024-01-01T00:00:00Z" },
+    { "user_id": 5, "full_name": "Alice Volunteer", "email": "alice@volunteer.org", "password_hash": "hashed_pwd_5", "is_active": true, "created_at": "2024-01-15T00:00:00Z" }
+  ],
+  "roles": [
+    { "role_id": 1, "role_name": "ADMIN" },
+    { "role_id": 2, "role_name": "PANTRY_LEAD" },
+    { "role_id": 3, "role_name": "VOLUNTEER" }
+  ],
+  "user_roles": [
+    { "user_id": 1, "role_id": 2 },
+    { "user_id": 2, "role_id": 2 },
+    { "user_id": 3, "role_id": 2 },
+    { "user_id": 4, "role_id": 1 },
+    { "user_id": 5, "role_id": 3 }
   ],
   "pantries": [
-    { "id": 1, "name": "Licking County Pantry", "slug": "licking-county-pantry", "lead_id": 1 },
-    { "id": 2, "name": "Northside Pantry", "slug": "northside-pantry", "lead_id": 2 },
-    { "id": 3, "name": "Southpoint Pantry", "slug": "southpoint-pantry", "lead_id": null }
+    { "pantry_id": 1, "name": "Licking County Pantry", "location_address": "123 Main St, Licking County, OH", "created_at": "2024-01-01T00:00:00Z" },
+    { "pantry_id": 2, "name": "Northside Pantry", "location_address": "456 Oak Ave, Northside, OH", "created_at": "2024-01-01T00:00:00Z" },
+    { "pantry_id": 3, "name": "Southpoint Pantry", "location_address": "789 Elm St, Southpoint, OH", "created_at": "2024-01-01T00:00:00Z" }
   ],
-  "shifts": []
+  "pantry_leads": [
+    { "pantry_id": 1, "user_id": 1 },
+    { "pantry_id": 2, "user_id": 2 },
+    { "pantry_id": 3, "user_id": 3 },
+    { "pantry_id": 1, "user_id": 2 }
+  ],
+  "shifts": [
+    { "shift_id": 1, "pantry_id": 1, "shift_name": "Food Sorting Morning", "start_time": "2024-02-26T09:00:00Z", "end_time": "2024-02-26T12:00:00Z", "status": "OPEN", "created_by": 1, "created_at": "2024-02-20T00:00:00Z" }
+  ],
+  "shift_roles": [
+    { "shift_role_id": 1, "shift_id": 1, "role_title": "Greeter", "required_count": 2, "filled_count": 0, "status": "OPEN" },
+    { "shift_role_id": 2, "shift_id": 1, "role_title": "Food Sorter", "required_count": 5, "filled_count": 0, "status": "OPEN" }
+  ],
+  "shift_signups": []
 }
