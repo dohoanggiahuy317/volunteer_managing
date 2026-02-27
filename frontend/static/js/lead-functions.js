@@ -1,0 +1,152 @@
+// Pantry Lead Functions - Shift Management
+
+/**
+ * Get all shifts for a pantry
+ * Returns shifts with nested shift_roles
+ */
+async function getShifts(pantryId) {
+    try {
+        const shifts = await apiGet(`/api/pantries/${pantryId}/shifts`);
+        return shifts;
+    } catch (error) {
+        console.error('Failed to get shifts:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get specific shift by ID
+ */
+async function getShift(shiftId) {
+    try {
+        const shift = await apiGet(`/api/shifts/${shiftId}`);
+        return shift;
+    } catch (error) {
+        console.error('Failed to get shift:', error);
+        throw error;
+    }
+}
+
+/**
+ * Create a new shift (pantry lead or admin)
+ */
+async function createShift(pantryId, shiftData) {
+    try {
+        const shift = await apiPost(`/api/pantries/${pantryId}/shifts`, shiftData);
+        return shift;
+    } catch (error) {
+        console.error('Failed to create shift:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update shift information
+ */
+async function updateShift(shiftId, shiftData) {
+    try {
+        const shift = await apiPatch(`/api/shifts/${shiftId}`, shiftData);
+        return shift;
+    } catch (error) {
+        console.error('Failed to update shift:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete a shift (cascades to roles and signups)
+ */
+async function deleteShift(shiftId) {
+    try {
+        await apiDelete(`/api/shifts/${shiftId}`);
+    } catch (error) {
+        console.error('Failed to delete shift:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get roles for a specific shift
+ */
+async function getShiftRoles(shiftId) {
+    try {
+        const roles = await apiGet(`/api/shifts/${shiftId}/roles`);
+        return roles;
+    } catch (error) {
+        console.error('Failed to get shift roles:', error);
+        throw error;
+    }
+}
+
+/**
+ * Create a role for a shift (e.g., "Food Sorter" with required_count: 5)
+ */
+async function createShiftRole(shiftId, roleData) {
+    try {
+        const role = await apiPost(`/api/shifts/${shiftId}/roles`, roleData);
+        return role;
+    } catch (error) {
+        console.error('Failed to create shift role:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update shift role information
+ */
+async function updateShiftRole(roleId, roleData) {
+    try {
+        const role = await apiPatch(`/api/shift-roles/${roleId}`, roleData);
+        return role;
+    } catch (error) {
+        console.error('Failed to update shift role:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete a shift role
+ */
+async function deleteShiftRole(roleId) {
+    try {
+        await apiDelete(`/api/shift-roles/${roleId}`);
+    } catch (error) {
+        console.error('Failed to delete shift role:', error);
+        throw error;
+    }
+}
+
+/**
+ * Format datetime for input field (YYYY-MM-DDTHH:MM)
+ */
+function formatDateTimeForInput(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().slice(0, 16);
+}
+
+/**
+ * Format datetime for display
+ */
+function formatDateTimeForDisplay(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+/**
+ * Calculate shift duration in hours
+ */
+function calculateShiftDuration(startTime, endTime) {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const hours = (end - start) / (1000 * 60 * 60);
+    return hours.toFixed(1);
+}
