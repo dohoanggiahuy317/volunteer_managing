@@ -32,8 +32,8 @@ async function getShift(shiftId) {
  */
 async function createShift(pantryId, shiftData) {
     try {
-        const data = await apiPost(`/api/pantries/${pantryId}/shifts`, shiftData);
-        return data.shift;
+        const shift = await apiPost(`/api/pantries/${pantryId}/shifts`, shiftData);
+        return shift;
     } catch (error) {
         console.error('Failed to create shift:', error);
         throw error;
@@ -45,8 +45,8 @@ async function createShift(pantryId, shiftData) {
  */
 async function updateShift(shiftId, shiftData) {
     try {
-        const data = await apiPatch(`/api/shifts/${shiftId}`, shiftData);
-        return data.shift;
+        const shift = await apiPatch(`/api/shifts/${shiftId}`, shiftData);
+        return shift;
     } catch (error) {
         console.error('Failed to update shift:', error);
         throw error;
@@ -83,8 +83,8 @@ async function getShiftRoles(shiftId) {
  */
 async function createShiftRole(shiftId, roleData) {
     try {
-        const data = await apiPost(`/api/shifts/${shiftId}/roles`, roleData);
-        return data.shift_role;
+        const role = await apiPost(`/api/shifts/${shiftId}/roles`, roleData);
+        return role;
     } catch (error) {
         console.error('Failed to create shift role:', error);
         throw error;
@@ -96,8 +96,8 @@ async function createShiftRole(shiftId, roleData) {
  */
 async function updateShiftRole(roleId, roleData) {
     try {
-        const data = await apiPatch(`/api/shift-roles/${roleId}`, roleData);
-        return data.shift_role;
+        const role = await apiPatch(`/api/shift-roles/${roleId}`, roleData);
+        return role;
     } catch (error) {
         console.error('Failed to update shift role:', error);
         throw error;

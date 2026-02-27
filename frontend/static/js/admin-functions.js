@@ -14,6 +14,19 @@ async function getPantries() {
 }
 
 /**
+ * Get all pantries (public endpoint, no authorization required)
+ */
+async function getAllPantries() {
+    try {
+        const pantries = await apiGet('/api/all_pantries');
+        return pantries;
+    } catch (error) {
+        console.error('Failed to get all pantries:', error);
+        throw error;
+    }
+}
+
+/**
  * Get specific pantry by ID
  */
 async function getPantry(pantryId) {
@@ -31,8 +44,8 @@ async function getPantry(pantryId) {
  */
 async function createPantry(pantryData) {
     try {
-        const data = await apiPost('/api/pantries', pantryData);
-        return data.pantry;
+        const pantry = await apiPost('/api/pantries', pantryData);
+        return pantry;
     } catch (error) {
         console.error('Failed to create pantry:', error);
         throw error;
@@ -44,8 +57,8 @@ async function createPantry(pantryData) {
  */
 async function updatePantry(pantryId, pantryData) {
     try {
-        const data = await apiPatch(`/api/pantries/${pantryId}`, pantryData);
-        return data.pantry;
+        const pantry = await apiPatch(`/api/pantries/${pantryId}`, pantryData);
+        return pantry;
     } catch (error) {
         console.error('Failed to update pantry:', error);
         throw error;
@@ -69,8 +82,8 @@ async function deletePantry(pantryId) {
  */
 async function getPantryLeads(pantryId) {
     try {
-        const data = await apiGet(`/api/pantries/${pantryId}/leads`);
-        return data.leads;
+        const pantry = await getPantry(pantryId);
+        return pantry.leads || [];
     } catch (error) {
         console.error('Failed to get pantry leads:', error);
         throw error;

@@ -61,8 +61,8 @@ async function getAllUsers(roleFilter = null) {
  */
 async function createUser(userData) {
     try {
-        const data = await apiPost('/api/users', userData);
-        return data.user;
+        const user = await apiPost('/api/users', userData);
+        return user;
     } catch (error) {
         console.error('Failed to create user:', error);
         throw error;

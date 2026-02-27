@@ -240,13 +240,18 @@ def list_pantries() -> Any:
     return jsonify(pantries)
 
 
+@app.get("/api/all_pantries")
+def list_all_pantries() -> Any:
+    """List all pantries (public endpoint, no authorization required)."""
+    pantries = list(store["pantries"])
+    for p in pantries:
+        p["leads"] = get_pantry_leads(p.get("pantry_id"))
+    return jsonify(pantries)
+
+
 @app.get("/api/pantries/<int:pantry_id>")
 def get_pantry(pantry_id: int) -> Any:
-    """Get pantry by ID."""
-    allowed = {p.get("pantry_id") for p in pantries_for_current_user()}
-    if pantry_id not in allowed:
-        return jsonify({"error": "Forbidden"}), 403
-    
+    """Get pantry by ID (public - no authorization required)."""
     pantry = find_pantry_by_id(pantry_id)
     if not pantry:
         return jsonify({"error": "Not found"}), 404
@@ -365,11 +370,7 @@ def remove_pantry_lead(pantry_id: int, lead_id: int) -> Any:
 
 @app.get("/api/pantries/<int:pantry_id>/shifts")
 def get_shifts(pantry_id: int) -> Any:
-    """Get all shifts for a pantry."""
-    allowed = {p.get("pantry_id") for p in pantries_for_current_user()}
-    if pantry_id not in allowed:
-        return jsonify({"error": "Forbidden"}), 403
-    
+    """Get all shifts for a pantry (public - no authorization required)."""
     shifts = [s for s in store["shifts"] if s.get("pantry_id") == pantry_id]
     
     # Enrich with shift_roles
@@ -433,16 +434,10 @@ def create_shift(pantry_id: int) -> Any:
 
 @app.get("/api/shifts/<int:shift_id>")
 def get_shift(shift_id: int) -> Any:
-    """Get a single shift with its roles."""
+    """Get a single shift with its roles (public - no authorization required)."""
     shift = next((s for s in store["shifts"] if s.get("shift_id") == shift_id), None)
     if not shift:
         return jsonify({"error": "Not found"}), 404
-    
-    # Check permission
-    pantry_id = shift.get("pantry_id")
-    allowed = {p.get("pantry_id") for p in pantries_for_current_user()}
-    if pantry_id not in allowed:
-        return jsonify({"error": "Forbidden"}), 403
     
     shift["roles"] = get_shift_roles(shift_id)
     return jsonify(shift)
@@ -767,6 +762,13 @@ def update_signup(signup_id: int) -> Any:
 
 
 # ========== PUBLIC ==========
+
+@app.get("/api/public/pantries")
+def get_public_pantries() -> Any:
+    """List all pantries (public endpoint)."""
+    pantries = list(store["pantries"])
+    return jsonify(pantries)
+
 
 @app.get("/api/public/pantries/<slug>/shifts")
 def get_public_shifts(slug: str) -> Any:
