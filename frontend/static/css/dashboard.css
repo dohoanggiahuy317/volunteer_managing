@@ -281,6 +281,121 @@ table tr:hover {
     background: #f7fafc;
 }
 
+.shift-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.shift-registrations-row td {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.shift-registrations {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: white;
+    padding: 1rem;
+}
+
+.shift-registrations-loading {
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.registrations-title {
+    font-size: 1rem;
+    color: #2d3748;
+    margin-bottom: 0.75rem;
+}
+
+.registration-role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+.registration-role {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: #f8fafc;
+}
+
+.registration-role-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.registration-role-title {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.registration-role-capacity {
+    font-size: 0.8rem;
+    color: #4a5568;
+}
+
+.registrant-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.registrant-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-top: 1px solid #e2e8f0;
+    padding: 0.6rem 0;
+}
+
+.registrant-item:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.registrant-main {
+    min-width: 0;
+}
+
+.registrant-name {
+    font-weight: 500;
+    color: #2d3748;
+}
+
+.registrant-email {
+    color: #4a5568;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.registrant-status {
+    align-self: flex-start;
+    background: #edf2f7;
+    color: #2d3748;
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.registrations-empty {
+    color: #718096;
+    font-size: 0.875rem;
+}
+
+.registrations-error {
+    color: #c53030;
+    font-weight: 500;
+}
+
 /* Messages */
 .message {
     padding: 1rem;
@@ -518,5 +633,10 @@ table tr:hover {
 
     .card {
         padding: 1.5rem;
+    }
+
+    .shift-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 }

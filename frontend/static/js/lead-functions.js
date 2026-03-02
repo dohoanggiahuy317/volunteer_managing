@@ -28,6 +28,19 @@ async function getShift(shiftId) {
 }
 
 /**
+ * Get role registrations for a shift (lead/admin only)
+ */
+async function getShiftRegistrations(shiftId) {
+    try {
+        const registrations = await apiGet(`/api/shifts/${shiftId}/registrations`);
+        return registrations;
+    } catch (error) {
+        console.error('Failed to get shift registrations:', error);
+        throw error;
+    }
+}
+
+/**
  * Create a new shift (pantry lead or admin)
  */
 async function createShift(pantryId, shiftData) {

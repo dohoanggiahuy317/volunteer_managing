@@ -85,6 +85,17 @@ def get_shift_signups(shift_role_id: int) -> list[dict[str, Any]]:
     return backend.list_shift_signups(shift_role_id)
 
 
+def serialize_signup_user(user: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Return safe user fields for signup views."""
+    if not user:
+        return None
+    return {
+        "user_id": user.get("user_id"),
+        "full_name": user.get("full_name"),
+        "email": user.get("email"),
+    }
+
+
 # ========== API ROUTES ==========
 
 @app.get("/api/me")
@@ -311,6 +322,51 @@ def get_shift(shift_id: int) -> Any:
 
     shift["roles"] = get_shift_roles(shift_id)
     return jsonify(shift)
+
+
+@app.get("/api/shifts/<int:shift_id>/registrations")
+def get_shift_registrations(shift_id: int) -> Any:
+    """Get shift roles with registered volunteers (PANTRY_LEAD or ADMIN)."""
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Forbidden"}), 403
+
+    shift = backend.get_shift_by_id(shift_id)
+    if not shift:
+        return jsonify({"error": "Not found"}), 404
+
+    user_id = int(user.get("user_id"))
+    is_admin = user_has_role(user_id, "ADMIN")
+    pantry_id = int(shift.get("pantry_id"))
+
+    if not is_admin and not backend.is_pantry_lead(pantry_id, user_id):
+        return jsonify({"error": "Forbidden"}), 403
+
+    roles_with_signups: list[dict[str, Any]] = []
+    for role in get_shift_roles(shift_id):
+        role_id = int(role.get("shift_role_id"))
+        signups = get_shift_signups(role_id)
+
+        enriched_signups: list[dict[str, Any]] = []
+        for signup in signups:
+            signup_with_user = dict(signup)
+            signup_user = find_user_by_id(int(signup.get("user_id")))
+            signup_with_user["user"] = serialize_signup_user(signup_user)
+            enriched_signups.append(signup_with_user)
+
+        role_with_signups = dict(role)
+        role_with_signups["signups"] = enriched_signups
+        roles_with_signups.append(role_with_signups)
+
+    response = {
+        "shift_id": shift.get("shift_id"),
+        "shift_name": shift.get("shift_name"),
+        "pantry_id": shift.get("pantry_id"),
+        "start_time": shift.get("start_time"),
+        "end_time": shift.get("end_time"),
+        "roles": roles_with_signups,
+    }
+    return jsonify(response)
 
 
 @app.patch("/api/shifts/<int:shift_id>")
