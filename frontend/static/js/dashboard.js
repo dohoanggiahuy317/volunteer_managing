@@ -2,7 +2,9 @@
 let currentUser = null;
 let currentPantryId = null;
 let allPantries = [];
-let allPublicPantries = []
+let allPublicPantries = [];
+let expandedShiftId = null;
+let registrationsCache = {};
 
 // Wait for all scripts to load before initializing
 window.addEventListener('load', async function () {
@@ -333,11 +335,147 @@ async function signupForRole(roleId) {
     }
 }
 
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function renderRegistrationsRowContent(shiftRegistrations) {
+    const roles = shiftRegistrations.roles || [];
+
+    if (roles.length === 0) {
+        return `
+            <div class="shift-registrations">
+                <h4 class="registrations-title">Registrations by Role</h4>
+                <p class="registrations-empty">No roles configured for this shift.</p>
+            </div>
+        `;
+    }
+
+    const roleBlocks = roles.map(role => {
+        const required = role.required_count || 0;
+        const filled = role.filled_count || 0;
+        const signups = role.signups || [];
+
+        const signupsHtml = signups.length > 0
+            ? `
+                <ul class="registrant-list">
+                    ${signups.map(signup => {
+                    const user = signup.user || {};
+                    const userName = escapeHtml(user.full_name || 'Unknown volunteer');
+                    const userEmail = escapeHtml(user.email || 'No email');
+                    const signupStatus = escapeHtml(signup.signup_status || 'CONFIRMED');
+                    return `
+                            <li class="registrant-item">
+                                <div class="registrant-main">
+                                    <div class="registrant-name">${userName}</div>
+                                    <div class="registrant-email">${userEmail}</div>
+                                </div>
+                                <span class="registrant-status">${signupStatus}</span>
+                            </li>
+                        `;
+                }).join('')}
+                </ul>
+            `
+            : '<p class="registrations-empty">No volunteers registered yet.</p>';
+
+        return `
+            <div class="registration-role">
+                <div class="registration-role-header">
+                    <div class="registration-role-title">${escapeHtml(role.role_title || 'Untitled Role')}</div>
+                    <div class="registration-role-capacity">${filled}/${required} filled</div>
+                </div>
+                ${signupsHtml}
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="shift-registrations">
+            <h4 class="registrations-title">Registrations by Role</h4>
+            <div class="registration-role-grid">
+                ${roleBlocks}
+            </div>
+        </div>
+    `;
+}
+
+async function toggleShiftRegistrations(shiftId, buttonEl) {
+    const tbody = document.getElementById('shifts-table-body');
+    if (!tbody) return;
+
+    const targetRow = tbody.querySelector(`tr[data-shift-id="${shiftId}"]`);
+    if (!targetRow) return;
+
+    const previousExpandedShiftId = expandedShiftId;
+    const isTogglingSameShift = previousExpandedShiftId === shiftId;
+
+    const existingDetailsRow = tbody.querySelector('.shift-registrations-row');
+    if (existingDetailsRow) {
+        existingDetailsRow.remove();
+    }
+
+    if (previousExpandedShiftId !== null) {
+        const previousButton = tbody.querySelector(`button[data-registrations-btn="${previousExpandedShiftId}"]`);
+        if (previousButton) {
+            previousButton.textContent = 'View Registrations';
+        }
+    }
+
+    if (isTogglingSameShift) {
+        expandedShiftId = null;
+        return;
+    }
+
+    expandedShiftId = shiftId;
+    if (buttonEl) {
+        buttonEl.textContent = 'Hide Registrations';
+    }
+
+    const detailsRow = document.createElement('tr');
+    detailsRow.className = 'shift-registrations-row';
+    detailsRow.innerHTML = `
+        <td colspan="4">
+            <div class="shift-registrations shift-registrations-loading">Loading registrations...</div>
+        </td>
+    `;
+    targetRow.insertAdjacentElement('afterend', detailsRow);
+
+    try {
+        if (!registrationsCache[shiftId]) {
+            registrationsCache[shiftId] = await getShiftRegistrations(shiftId);
+        }
+
+        if (expandedShiftId !== shiftId) return;
+        detailsRow.innerHTML = `<td colspan="4">${renderRegistrationsRowContent(registrationsCache[shiftId])}</td>`;
+    } catch (error) {
+        console.error('Failed to load registrations:', error);
+        if (expandedShiftId !== shiftId) return;
+
+        detailsRow.innerHTML = `
+            <td colspan="4">
+                <div class="shift-registrations">
+                    <p class="registrations-error">Failed to load registrations: ${escapeHtml(error.message || 'Unknown error')}</p>
+                </div>
+            </td>
+        `;
+        showMessage('shifts', `Failed to load registrations: ${error.message}`, 'error');
+    }
+}
+
 // Load shifts table (admin)
 async function loadShiftsTable() {
     if (!currentPantryId) return;
 
     try {
+        expandedShiftId = null;
+        registrationsCache = {};
+
         const shifts = await getShifts(currentPantryId);
         const tbody = document.getElementById('shifts-table-body');
         tbody.innerHTML = '';
@@ -355,12 +493,23 @@ async function loadShiftsTable() {
                 : 'No roles';
 
             const tr = document.createElement('tr');
+            tr.dataset.shiftId = String(shift.shift_id);
             tr.innerHTML = `
                         <td><strong>${shift.shift_name}</strong></td>
                         <td>${startDate.toLocaleString()}</td>
                         <td>${rolesText}</td>
                         <td>
-                            <button class="btn btn-danger" onclick="deleteShiftConfirm(${shift.shift_id})" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Delete</button>
+                            <div class="shift-actions">
+                                <button
+                                    class="btn btn-secondary"
+                                    data-registrations-btn="${shift.shift_id}"
+                                    onclick="toggleShiftRegistrations(${shift.shift_id}, this)"
+                                    style="padding: 0.5rem 1rem; font-size: 0.875rem;"
+                                >
+                                    View Registrations
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteShiftConfirm(${shift.shift_id})" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Delete</button>
+                            </div>
                         </td>
                     `;
             tbody.appendChild(tr);
@@ -594,3 +743,4 @@ function showMessage(target, text, type = 'info') {
 // Make functions globally available
 window.signupForRole = signupForRole;
 window.deleteShiftConfirm = deleteShiftConfirm;
+window.toggleShiftRegistrations = toggleShiftRegistrations;
