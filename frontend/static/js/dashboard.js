@@ -378,10 +378,62 @@ function formatShiftRange(startTime, endTime) {
     return `${start.toLocaleDateString()} | ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+function getAttendanceInfo(signupStatus) {
+    const normalized = String(signupStatus || '').toUpperCase();
+    if (normalized === 'SHOW_UP') {
+        return { label: 'Attended', className: 'attendance-badge-attended', isMarked: true };
+    }
+    if (normalized === 'NO_SHOW') {
+        return { label: 'Missed', className: 'attendance-badge-missed', isMarked: true };
+    }
+    return { label: 'Pending Attendance', className: 'attendance-badge-pending', isMarked: false };
+}
+
+function getAttendanceWindowInfo(startTime, endTime, now = new Date()) {
+    const start = safeDateValue(startTime);
+    const end = safeDateValue(endTime);
+    if (!start || !end) {
+        return { canMark: false, message: 'Attendance window unavailable for this shift.' };
+    }
+
+    const openAt = new Date(start.getTime() - 15 * 60 * 1000);
+    const closeAt = new Date(end.getTime() + 6 * 60 * 60 * 1000);
+    if (now < openAt) {
+        return { canMark: false, message: 'Attendance opens 15 minutes before shift start.' };
+    }
+    if (now > closeAt) {
+        return { canMark: false, message: 'Attendance window is closed (6 hours after shift end).' };
+    }
+    return { canMark: true, message: 'Attendance window is open.' };
+}
+
+function renderCredibilitySummary(attendedCount, totalMarkedPast) {
+    if (!totalMarkedPast) {
+        return `
+            <section class="credibility-summary">
+                <h3 class="credibility-title">Credibility</h3>
+                <p class="credibility-value">N/A</p>
+                <p class="credibility-detail">No marked past shifts yet.</p>
+            </section>
+        `;
+    }
+
+    const credibilityPercent = Math.round((attendedCount / totalMarkedPast) * 100);
+    return `
+        <section class="credibility-summary">
+            <h3 class="credibility-title">Credibility</h3>
+            <p class="credibility-value">${credibilityPercent}%</p>
+            <p class="credibility-detail">${attendedCount}/${totalMarkedPast} attended</p>
+        </section>
+    `;
+}
+
 function renderMyShiftCard(signup, now) {
     const signupStatus = String(signup.signup_status || 'UNKNOWN').toUpperCase();
     const shiftStatus = String(signup.shift_status || 'OPEN').toUpperCase();
+    const attendanceInfo = getAttendanceInfo(signupStatus);
     const showCancel = canCancelSignup(signup, now);
+    const showSignupStatusBadge = !attendanceInfo.isMarked;
 
     return `
         <article class="my-shift-card">
@@ -391,7 +443,11 @@ function renderMyShiftCard(signup, now) {
                     <p class="my-shift-role">Role: ${escapeHtml(signup.role_title || 'Unassigned')}</p>
                 </div>
                 <div class="my-shift-badges">
-                    <span class="status-badge ${toStatusClass('signup-status', signupStatus)}">${escapeHtml(signupStatus)}</span>
+                    <span class="status-badge attendance-badge ${attendanceInfo.className}">${escapeHtml(attendanceInfo.label)}</span>
+                    ${showSignupStatusBadge
+            ? `<span class="status-badge ${toStatusClass('signup-status', signupStatus)}">${escapeHtml(signupStatus)}</span>`
+            : ''
+        }
                     <span class="status-badge ${toStatusClass('shift-status', shiftStatus)}">${escapeHtml(shiftStatus)}</span>
                 </div>
             </div>
@@ -440,12 +496,16 @@ async function loadMyRegisteredShifts() {
 
     try {
         const signups = await getUserSignups(currentUser.user_id);
+        const now = new Date();
+
         if (!signups || signups.length === 0) {
-            container.innerHTML = '<p class="my-shift-empty-all">You have no registered shifts yet.</p>';
+            container.innerHTML = `
+                ${renderCredibilitySummary(0, 0)}
+                <p class="my-shift-empty-all">You have no registered shifts yet.</p>
+            `;
             return;
         }
 
-        const now = new Date();
         const buckets = {
             incoming: [],
             ongoing: [],
@@ -461,8 +521,16 @@ async function loadMyRegisteredShifts() {
         buckets.ongoing.sort((a, b) => sortByDate(a, b, 'end_time', 'asc'));
         buckets.past.sort((a, b) => sortByDate(a, b, 'end_time', 'desc'));
 
+        const markedPastSignups = buckets.past.filter(signup => {
+            const status = String(signup.signup_status || '').toUpperCase();
+            return status === 'SHOW_UP' || status === 'NO_SHOW';
+        });
+        const attendedCount = markedPastSignups.filter(signup => String(signup.signup_status || '').toUpperCase() === 'SHOW_UP').length;
+        const totalMarkedPastShifts = markedPastSignups.length;
+
         container.innerHTML = `
             <div class="my-shifts-sections">
+                ${renderCredibilitySummary(attendedCount, totalMarkedPastShifts)}
                 ${renderMyShiftSection('incoming', 'Incoming Shifts', buckets.incoming, now)}
                 ${renderMyShiftSection('ongoing', 'Ongoing Shifts', buckets.ongoing, now)}
                 ${renderMyShiftSection('past', 'Past Shifts', buckets.past, now)}
@@ -487,8 +555,37 @@ async function cancelMySignup(signupId) {
     }
 }
 
+async function markSignupAttendance(signupId, attendanceStatus, shiftId) {
+    try {
+        await markAttendance(signupId, attendanceStatus);
+        showMessage('shifts', 'Attendance updated successfully!', 'success');
+
+        if (typeof shiftId === 'number') {
+            delete registrationsCache[shiftId];
+        }
+
+        if (expandedShiftId === shiftId) {
+            const detailsRow = document.querySelector('.shift-registrations-row');
+            if (detailsRow) {
+                const refreshedRegistrations = await getShiftRegistrations(shiftId);
+                registrationsCache[shiftId] = refreshedRegistrations;
+                detailsRow.innerHTML = `<td colspan="4">${renderRegistrationsRowContent(refreshedRegistrations)}</td>`;
+            }
+        }
+
+        const myShiftsTab = document.getElementById('content-my-shifts');
+        if (myShiftsTab && myShiftsTab.classList.contains('active')) {
+            await loadMyRegisteredShifts();
+        }
+    } catch (error) {
+        showMessage('shifts', `Attendance update failed: ${error.message}`, 'error');
+    }
+}
+
 function renderRegistrationsRowContent(shiftRegistrations) {
     const roles = shiftRegistrations.roles || [];
+    const windowInfo = getAttendanceWindowInfo(shiftRegistrations.start_time, shiftRegistrations.end_time);
+    const canMarkAttendance = currentUser && (currentUser.roles.includes('ADMIN') || currentUser.roles.includes('PANTRY_LEAD'));
 
     if (roles.length === 0) {
         return `
@@ -508,20 +605,50 @@ function renderRegistrationsRowContent(shiftRegistrations) {
             ? `
                 <ul class="registrant-list">
                     ${signups.map(signup => {
-                    const user = signup.user || {};
-                    const userName = escapeHtml(user.full_name || 'Unknown volunteer');
-                    const userEmail = escapeHtml(user.email || 'No email');
-                    const signupStatus = escapeHtml(signup.signup_status || 'CONFIRMED');
-                    return `
+                const user = signup.user || {};
+                const userName = escapeHtml(user.full_name || 'Unknown volunteer');
+                const userEmail = escapeHtml(user.email || 'No email');
+                const attendanceInfo = getAttendanceInfo(signup.signup_status);
+                const disabledAttr = windowInfo.canMark ? '' : 'disabled';
+                const disabledReason = escapeHtml(windowInfo.message);
+                const attendanceActions = canMarkAttendance
+                    ? `
+                        <div class="registrant-actions">
+                            <button
+                                class="btn btn-secondary btn-attendance btn-attendance-showup"
+                                onclick="markSignupAttendance(${signup.signup_id}, 'SHOW_UP', ${shiftRegistrations.shift_id})"
+                                ${disabledAttr}
+                                title="${disabledReason}"
+                                style="padding: 0.25rem 0.6rem; font-size: 0.75rem;"
+                            >
+                                Mark Show Up
+                            </button>
+                            <button
+                                class="btn btn-secondary btn-attendance btn-attendance-noshow"
+                                onclick="markSignupAttendance(${signup.signup_id}, 'NO_SHOW', ${shiftRegistrations.shift_id})"
+                                ${disabledAttr}
+                                title="${disabledReason}"
+                                style="padding: 0.25rem 0.6rem; font-size: 0.75rem;"
+                            >
+                                Mark No Show
+                            </button>
+                        </div>
+                    `
+                    : '';
+
+                return `
                             <li class="registrant-item">
                                 <div class="registrant-main">
                                     <div class="registrant-name">${userName}</div>
                                     <div class="registrant-email">${userEmail}</div>
                                 </div>
-                                <span class="registrant-status">${signupStatus}</span>
+                                <div class="registrant-right">
+                                    <span class="registrant-status ${attendanceInfo.className}">${escapeHtml(attendanceInfo.label)}</span>
+                                    ${attendanceActions}
+                                </div>
                             </li>
                         `;
-                }).join('')}
+            }).join('')}
                 </ul>
             `
             : '<p class="registrations-empty">No volunteers registered yet.</p>';
@@ -540,6 +667,7 @@ function renderRegistrationsRowContent(shiftRegistrations) {
     return `
         <div class="shift-registrations">
             <h4 class="registrations-title">Registrations by Role</h4>
+            ${canMarkAttendance ? `<p class="attendance-window-note ${windowInfo.canMark ? 'attendance-window-open' : 'attendance-window-closed'}">${escapeHtml(windowInfo.message)}</p>` : ''}
             <div class="registration-role-grid">
                 ${roleBlocks}
             </div>
@@ -889,3 +1017,4 @@ window.signupForRole = signupForRole;
 window.deleteShiftConfirm = deleteShiftConfirm;
 window.toggleShiftRegistrations = toggleShiftRegistrations;
 window.cancelMySignup = cancelMySignup;
+window.markSignupAttendance = markSignupAttendance;

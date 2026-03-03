@@ -79,6 +79,21 @@ async function deleteShift(shiftId) {
 }
 
 /**
+ * Mark attendance for a signup (PANTRY_LEAD or ADMIN)
+ */
+async function markAttendance(signupId, attendanceStatus) {
+    try {
+        const updated = await apiPatch(`/api/signups/${signupId}/attendance`, {
+            attendance_status: attendanceStatus
+        });
+        return updated;
+    } catch (error) {
+        console.error('Failed to mark attendance:', error);
+        throw error;
+    }
+}
+
+/**
  * Get roles for a specific shift
  */
 async function getShiftRoles(shiftId) {

@@ -386,6 +386,49 @@ table tr:hover {
     text-transform: uppercase;
 }
 
+.registrant-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+}
+
+.registrant-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.btn-attendance:disabled {
+    opacity: 0.55;
+}
+
+.btn-attendance-showup:not(:disabled) {
+    border: 1px solid #38a169;
+    color: #2f855a;
+    background: #f0fff4;
+}
+
+.btn-attendance-noshow:not(:disabled) {
+    border: 1px solid #e53e3e;
+    color: #c53030;
+    background: #fff5f5;
+}
+
+.attendance-window-note {
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.attendance-window-open {
+    color: #2f855a;
+}
+
+.attendance-window-closed {
+    color: #c53030;
+}
+
 .registrations-empty {
     color: #718096;
     font-size: 0.875rem;
@@ -466,6 +509,21 @@ table tr:hover {
     align-items: center;
 }
 
+.attendance-badge-attended {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.attendance-badge-missed {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.attendance-badge-pending {
+    background: #e2e8f0;
+    color: #2d3748;
+}
+
 .signup-status-confirmed {
     background: #c6f6d5;
     color: #22543d;
@@ -515,6 +573,31 @@ table tr:hover {
 .my-shift-load-error {
     color: #c53030;
     font-weight: 500;
+}
+
+.credibility-summary {
+    border: 1px solid #bee3f8;
+    background: #ebf8ff;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.credibility-title {
+    color: #2a4365;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.credibility-value {
+    color: #1a365d;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.1rem;
+}
+
+.credibility-detail {
+    color: #2c5282;
+    font-size: 0.875rem;
 }
 
 /* Messages */
@@ -766,6 +849,19 @@ table tr:hover {
     }
 
     .my-shift-badges {
+        justify-content: flex-start;
+    }
+
+    .registrant-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .registrant-right {
+        align-items: flex-start;
+    }
+
+    .registrant-actions {
         justify-content: flex-start;
     }
 }

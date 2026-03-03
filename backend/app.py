@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ backend: StoreBackend = create_backend()
 
 # Mock current user (no auth yet): default to user id=4 (admin)
 DEFAULT_USER_ID = 4
+ATTENDANCE_STATUSES = {"SHOW_UP", "NO_SHOW"}
 
 
 @app.before_request
@@ -94,6 +96,87 @@ def serialize_signup_user(user: dict[str, Any] | None) -> dict[str, Any] | None:
         "full_name": user.get("full_name"),
         "email": user.get("email"),
     }
+
+
+def parse_iso_datetime_to_utc(value: Any) -> datetime | None:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    elif isinstance(value, str):
+        normalized = value.replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+    else:
+        return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def get_signup_shift_context(signup_id: int) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
+    signup = backend.get_signup_by_id(signup_id)
+    if not signup:
+        return None, None, None
+
+    shift_role_id = int(signup.get("shift_role_id"))
+    shift_role = backend.get_shift_role_by_id(shift_role_id)
+    if not shift_role:
+        return signup, None, None
+
+    shift_id = int(shift_role.get("shift_id"))
+    shift = backend.get_shift_by_id(shift_id)
+    return signup, shift_role, shift
+
+
+def check_attendance_marking_allowed(actor_user_id: int, shift: dict[str, Any]) -> tuple[bool, str | None]:
+    is_admin = user_has_role(actor_user_id, "ADMIN")
+    pantry_id = int(shift.get("pantry_id"))
+    is_lead_for_pantry = backend.is_pantry_lead(pantry_id, actor_user_id)
+    if not is_admin and not is_lead_for_pantry:
+        return False, "Forbidden"
+
+    start_time = parse_iso_datetime_to_utc(shift.get("start_time"))
+    end_time = parse_iso_datetime_to_utc(shift.get("end_time"))
+    if not start_time or not end_time:
+        return False, "Shift time is invalid"
+
+    # TODO(dev): Re-enable attendance time-window enforcement before production.
+    # now_utc = datetime.now(timezone.utc)
+    # open_at = start_time - timedelta(minutes=15)
+    # close_at = end_time + timedelta(hours=6)
+    # if now_utc < open_at or now_utc > close_at:
+    #     return False, "Attendance can only be marked from 15 minutes before start until 6 hours after shift end"
+
+    return True, None
+
+
+def set_attendance_status(signup_id: int, attendance_status: str, actor_user_id: int) -> tuple[dict[str, Any] | None, tuple[str, int] | None]:
+    normalized_status = str(attendance_status or "").strip().upper()
+    if normalized_status not in ATTENDANCE_STATUSES:
+        return None, ("attendance_status must be SHOW_UP or NO_SHOW", 400)
+
+    signup, shift_role, shift = get_signup_shift_context(signup_id)
+    if not signup:
+        return None, ("Not found", 404)
+    if not shift_role or not shift:
+        return None, ("Shift context not found", 404)
+
+    allowed, error = check_attendance_marking_allowed(actor_user_id, shift)
+    if not allowed:
+        if error == "Forbidden":
+            return None, (error, 403)
+        return None, (error or "Attendance cannot be marked right now", 400)
+
+    updated = backend.update_signup(signup_id, normalized_status)
+    if not updated:
+        return None, ("Not found", 404)
+
+    updated["user"] = serialize_signup_user(find_user_by_id(int(updated.get("user_id"))))
+    return updated, None
 
 
 # ========== API ROUTES ==========
@@ -614,9 +697,32 @@ def delete_signup(signup_id: int) -> Any:
     return jsonify({"success": True}), 200
 
 
+@app.patch("/api/signups/<int:signup_id>/attendance")
+def mark_signup_attendance(signup_id: int) -> Any:
+    """Mark signup attendance as SHOW_UP or NO_SHOW (PANTRY_LEAD for pantry or ADMIN)."""
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Forbidden"}), 403
+
+    payload = request.get_json(silent=True) or {}
+    if "attendance_status" not in payload:
+        return jsonify({"error": "Missing attendance_status"}), 400
+
+    updated, error = set_attendance_status(
+        signup_id=signup_id,
+        attendance_status=payload.get("attendance_status"),
+        actor_user_id=int(user.get("user_id")),
+    )
+    if error:
+        message, status_code = error
+        return jsonify({"error": message}), status_code
+
+    return jsonify(updated), 200
+
+
 @app.patch("/api/signups/<int:signup_id>")
 def update_signup(signup_id: int) -> Any:
-    """Update signup status (ADMIN only - change status to NO_SHOW, etc)."""
+    """Update signup status (ADMIN only)."""
     user = current_user()
     if not user or not user_has_role(int(user.get("user_id")), "ADMIN"):
         return jsonify({"error": "Forbidden"}), 403
@@ -627,9 +733,21 @@ def update_signup(signup_id: int) -> Any:
 
     payload = request.get_json(silent=True) or {}
     if "signup_status" in payload:
-        updated = backend.update_signup(signup_id, payload["signup_status"])
-        if updated:
+        requested_status = str(payload["signup_status"]).strip().upper()
+        if requested_status in ATTENDANCE_STATUSES:
+            updated, error = set_attendance_status(
+                signup_id=signup_id,
+                attendance_status=requested_status,
+                actor_user_id=int(user.get("user_id")),
+            )
+            if error:
+                message, status_code = error
+                return jsonify({"error": message}), status_code
             signup = updated
+        else:
+            updated = backend.update_signup(signup_id, requested_status)
+            if updated:
+                signup = updated
 
     return jsonify(signup)
 

@@ -227,3 +227,20 @@ Admin
 6.	Reliability scoring
 7.	On-call broadcast + responder capture -->
 
+## Attendance + Credibility (Implemented Rules)
+
+- Attendance outcomes are stored in `shift_signups.signup_status` using:
+  - `SHOW_UP`
+  - `NO_SHOW`
+- Attendance marking endpoint:
+  - `PATCH /api/signups/{signup_id}/attendance`
+  - Body: `{ "attendance_status": "SHOW_UP" | "NO_SHOW" }`
+- Permission:
+  - Pantry lead for that shift's pantry, or admin.
+- Time window:
+  - Opens 15 minutes before shift start.
+  - Closes 6 hours after shift end.
+- Volunteer credibility in My Shifts:
+  - `attended / total_marked_past_shifts`
+  - numerator counts `SHOW_UP`
+  - denominator counts past shifts marked as `SHOW_UP` or `NO_SHOW`
