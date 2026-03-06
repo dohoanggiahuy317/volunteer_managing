@@ -359,7 +359,7 @@ class MySQLBackend(StoreBackend):
                 cursor = conn.cursor(dictionary=True)
                 if include_cancelled:
                     cursor.execute(
-                        "SELECT * FROM shifts WHERE pantry_id = %s AND end_time >= NOW() ORDER BY shift_id",
+                        "SELECT * FROM shifts WHERE pantry_id = %s AND end_time >= UTC_TIMESTAMP() ORDER BY shift_id",
                         (pantry_id,),
                     )
                 else:
