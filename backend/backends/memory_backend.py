@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime,timezone
 from pathlib import Path
 from typing import Any
 
@@ -209,8 +209,34 @@ class MemoryBackend(StoreBackend):
             shifts = [s for s in shifts if s.get("status") != "CANCELLED"]
         return shifts
     
+
+    
     def list_shifts_pantries_without_expired(self, pantry_id: int, include_cancelled: bool = True) -> list[dict[str, Any]]:
-        shifts = [dict(s) for s in self.store["shifts"] if s.get("pantry_id") == pantry_id and s.get("end_time") >= datetime.now()]
+
+        shifts = [dict(s) for s in self.store["shifts"] if s.get("pantry_id") == pantry_id ]
+
+        filter_shifts = []
+
+        for shift in shifts : 
+            shift_time_str = shift["end_time"]
+            def parse_iso_time(time_str):
+                try:
+                    return datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+                except ValueError:
+                    return datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                
+            shift_time = parse_iso_time(shift_time_str)
+
+            current_time = datetime.now(timezone.utc)
+            
+
+            if current_time > shift_time: 
+                continue 
+
+            filter_shifts.append(shift)
+
+        shifts = filter_shifts
+
         if not include_cancelled:
             shifts = [s for s in shifts if s.get("status") != "CANCELLED"]
         return shifts
