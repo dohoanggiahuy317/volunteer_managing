@@ -587,13 +587,13 @@ def get_shifts(pantry_id: int) -> Any:
         shift["roles"] = get_shift_roles(shift_id, include_cancelled=include_cancelled)
     return jsonify(shifts)
 
-@app.get("/api/pantries/valid/<int:pantry_id>/shifts")
-def get_shifts_valid(pantry_id: int) -> Any:
-    """Get all shifts for a pantry (public - no authorization required)."""
-    shifts = backend.list_shifts_pantries_without_expired(pantry_id, include_cancelled=True)
+@app.get("/api/pantries/<int:pantry_id>/active-shifts")
+def get_active_shifts(pantry_id: int) -> Any:
+    """Get non-expired shifts for volunteer/public views."""
+    shifts = backend.list_non_expired_shifts_by_pantry(pantry_id, include_cancelled=False)
     for shift in shifts:
-        shift["roles"] = get_shift_roles(int(shift.get("shift_id")))
-    
+        shift["roles"] = get_shift_roles(int(shift.get("shift_id")), include_cancelled=False)
+
     return jsonify(shifts)
 
 
@@ -914,6 +914,8 @@ def create_signup(shift_role_id: int) -> Any:
 
     if str(shift.get("status", "OPEN")).upper() == "CANCELLED":
         return jsonify({"error": "Shift is cancelled"}), 400
+    if shift_has_ended(shift):
+        return jsonify({"error": "Shift has ended"}), 400
     if str(shift_role.get("status", "OPEN")).upper() == "CANCELLED":
         return jsonify({"error": "Shift role is cancelled"}), 400
 

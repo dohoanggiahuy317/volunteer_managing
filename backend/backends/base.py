@@ -67,9 +67,13 @@ class StoreBackend(ABC):
     @abstractmethod
     def list_shifts_by_pantry(self, pantry_id: int, include_cancelled: bool = True) -> list[dict[str, Any]]:
         raise NotImplementedError
-    
+
     @abstractmethod
-    def list_shifts_pantries_without_expired(self, pantry_id: int, include_cancelled: bool = True) -> list[dict[str, Any]]:
+    def list_non_expired_shifts_by_pantry(
+        self,
+        pantry_id: int,
+        include_cancelled: bool = True,
+    ) -> list[dict[str, Any]]:
         raise NotImplementedError
 
     @abstractmethod
