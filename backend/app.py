@@ -944,12 +944,14 @@ def create_signup(shift_role_id: int) -> Any:
             )
             if existing:
                 existing["user"] = find_user_by_id(user_id)
+                existing["already_signed_up"] = True
                 return jsonify(existing), 200
         return jsonify({"error": str(exc)}), 400
     except RuntimeError as exc:
         return jsonify({"error": str(exc)}), 400
 
     recalculate_shift_role_capacity(shift_role_id)
+    signup["already_signed_up"] = False
     signup["user"] = find_user_by_id(user_id)
     return jsonify(signup), 201
 

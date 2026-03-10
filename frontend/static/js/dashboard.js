@@ -379,8 +379,12 @@ async function signupForRole(roleId) {
         if (!currentUser || !currentUser.user_id) {
             throw new Error('Missing current user context');
         }
-        await signupForShift(roleId, currentUser.user_id);
-        showMessage('calendar', 'Successfully signed up!', 'success');
+        const signupResult = await signupForShift(roleId, currentUser.user_id);
+        if (signupResult && signupResult.already_signed_up) {
+            showMessage('calendar', 'You already signed up for this shift.', 'error');
+        } else {
+            showMessage('calendar', 'Successfully signed up!', 'success');
+        }
         await loadCalendarShifts(); // Reload to show updated counts
 
         const myShiftsTab = document.getElementById('content-my-shifts');

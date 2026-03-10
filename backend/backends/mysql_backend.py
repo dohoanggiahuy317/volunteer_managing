@@ -628,7 +628,7 @@ class MySQLBackend(StoreBackend):
             existing = cursor.fetchone()
             if existing is not None:
                 conn.rollback()
-                return _serialize_signup(existing)
+                raise ValueError("Already signed up")
 
             cursor.execute(
                 """
