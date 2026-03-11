@@ -1138,7 +1138,7 @@ function setupEventListeners() {
 
             // Show/hide pantry selector based on tab
             const pantrySelector = document.getElementById('pantry-selector');
-            if (targetTab === 'calendar' || targetTab === 'my-shifts') {
+            if (targetTab === 'calendar' || targetTab === 'my-shifts' ||  targetTab === 'admin') {
                 pantrySelector.style.display = 'none';
             } else {
                 pantrySelector.style.display = 'block';
