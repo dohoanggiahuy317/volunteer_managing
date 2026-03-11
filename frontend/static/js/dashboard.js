@@ -384,8 +384,9 @@ async function signupForRole(roleId) {
             showMessage('calendar', 'You already signed up for this shift.', 'error');
         } else {
             showMessage('calendar', 'Successfully signed up!', 'success');
+            await loadCalendarShifts(); // Reload to show updated counts
         }
-        await loadCalendarShifts(); // Reload to show updated counts
+        
 
         const myShiftsTab = document.getElementById('content-my-shifts');
         const isVolunteer = currentUser && currentUser.roles.includes('VOLUNTEER');

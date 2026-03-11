@@ -102,16 +102,11 @@ def serialize_signup_user(user: dict[str, Any] | None) -> dict[str, Any] | None:
     """Return safe user fields for signup views."""
     if not user:
         return None
-    score_raw = user.get("attendance_score")
-    try:
-        attendance_score = 100 if score_raw is None else int(score_raw)
-    except (TypeError, ValueError):
-        attendance_score = 100
     return {
         "user_id": user.get("user_id"),
         "full_name": user.get("full_name"),
         "email": user.get("email"),
-        "attendance_score": attendance_score,
+        "attendance_score": int(user.get("attendance_score", 100)),
     }
 
 

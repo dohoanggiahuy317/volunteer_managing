@@ -34,15 +34,6 @@ def _to_iso_z(value: Any) -> str:
     return ""
 
 
-def _int_or_default(value: Any, default: int) -> int:
-    try:
-        if value is None:
-            return default
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
 def _serialize_user(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "user_id": row["user_id"],
@@ -50,7 +41,7 @@ def _serialize_user(row: dict[str, Any]) -> dict[str, Any]:
         "email": row["email"],
         "password_hash": row["password_hash"],
         "is_active": bool(row["is_active"]),
-        "attendance_score": _int_or_default(row.get("attendance_score"), 100),
+        "attendance_score": int(row.get("attendance_score", 100)),
         "created_at": _to_iso_z(row["created_at"]),
         "updated_at": _to_iso_z(row["updated_at"]),
     }
@@ -143,33 +134,29 @@ class MySQLBackend(StoreBackend):
         )
 
     def _recalculate_user_attendance_score(self, cursor: Any, user_id: int) -> None:
-        try:
-            cursor.execute(
-                """
-                SELECT
-                    SUM(CASE WHEN UPPER(signup_status) = 'SHOW_UP' THEN 1 ELSE 0 END) AS attended_count,
-                    SUM(CASE WHEN UPPER(signup_status) IN ('SHOW_UP', 'NO_SHOW') THEN 1 ELSE 0 END) AS marked_count
-                FROM shift_signups
-                WHERE user_id = %s
-                """,
-                (user_id,),
-            )
-            score_row = cursor.fetchone() or {}
-            attended_count = int(score_row.get("attended_count") or 0)
-            marked_count = int(score_row.get("marked_count") or 0)
-            if marked_count == 0:
-                attendance_score = 100
-            else:
-                attendance_score = round((attended_count * 100) / marked_count)
+        cursor.execute(
+            """
+            SELECT
+                SUM(CASE WHEN UPPER(signup_status) = 'SHOW_UP' THEN 1 ELSE 0 END) AS attended_count,
+                SUM(CASE WHEN UPPER(signup_status) IN ('SHOW_UP', 'NO_SHOW') THEN 1 ELSE 0 END) AS marked_count
+            FROM shift_signups
+            WHERE user_id = %s
+            """,
+            (user_id,),
+        )
+        score_row = cursor.fetchone() or {}
+        attended_count = int(score_row.get("attended_count") or 0)
+        marked_count = int(score_row.get("marked_count") or 0)
+        if marked_count == 0:
+            attendance_score = 100
+        else:
+            attendance_score = round((attended_count * 100) / marked_count)
 
-            cursor.execute(
-                "UPDATE users SET attendance_score = %s WHERE user_id = %s",
-                (attendance_score, user_id),
-            )
-        except Exception as exc:
-            # Keep signup flow working if DB schema is older and lacks attendance_score.
-            if "attendance_score" not in str(exc):
-                raise
+        cursor.execute(
+            "UPDATE users SET attendance_score = %s WHERE user_id = %s",
+            (attendance_score, user_id),
+        )
+
 
     def get_user_by_id(self, user_id: int) -> dict[str, Any] | None:
         with get_connection() as conn:
@@ -683,7 +670,7 @@ class MySQLBackend(StoreBackend):
                 raise RuntimeError("This shift is cancelled")
 
             cursor.execute(
-                "SELECT * FROM shift_signups WHERE shift_role_id = %s AND user_id = %s",
+                "SELECT 1 FROM shift_signups WHERE shift_role_id = %s AND user_id = %s",
                 (shift_role_id, user_id),
             )
             existing = cursor.fetchone()
