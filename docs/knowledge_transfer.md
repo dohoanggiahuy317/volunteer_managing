@@ -129,6 +129,15 @@ Defines StoreBackend, the abstract interface every data backend (MySQL, in-memor
 - `update_signup(signup_id:int, signup_status:str) -> dict|None`  
   Change signup status.
 
+- `bulk_mark_shift_signups_pending(shift_id:int, reservation_expires_at:str) -> list[dict]`  
+  Bulk move non-cancelled/non-waitlisted signups to `PENDING_CONFIRMATION` and reset 48-hour reservations.
+
+- `expire_pending_signups(shift_id:int, now_utc:str) -> int`  
+  Auto-cancel expired or started-shift pending reservations.
+
+- `reconfirm_pending_signup(signup_id:int, now_utc:str) -> dict`  
+  Atomic reconfirm for first-come-first-serve after edits and count reductions.
+
 - `is_empty() -> bool`  
   Whether backend has no users/roles (used to decide seeding).
 
@@ -182,7 +191,7 @@ Dev/demo datastore kept in Python dicts, optionally seeded from `data/db.json`. 
   Shallow-copy a record so callers can’t mutate stored data; returns None if given None.
 
 - `_recalculate_role_capacity(shift_role_id) -> None`  
-  Counts active signups (CONFIRMED/SHOW_UP/NO_SHOW) for a role, updates `filled_count`, and sets role status to FULL when filled ≥ required, else OPEN (skips status change if role is CANCELLED).
+  Counts occupied slots for a role (active statuses plus unexpired `PENDING_CONFIRMATION` reservations), updates `filled_count`, and sets role status to FULL when filled ≥ required, else OPEN (skips status change if role is CANCELLED).
 
 - `_load_seed_data() -> None`  
   If `data/db.json` exists, loads tables from it and sets `next_*` ID counters to max existing + 1.
@@ -257,6 +266,9 @@ Dev/demo datastore kept in Python dicts, optionally seeded from `data/db.json`. 
 - `create_signup(shift_role_id, user_id, signup_status)`
 - `delete_signup(signup_id)`
 - `update_signup(signup_id, signup_status)`
+- `bulk_mark_shift_signups_pending(shift_id, reservation_expires_at)`
+- `expire_pending_signups(shift_id, now_utc)`
+- `reconfirm_pending_signup(signup_id, now_utc)`
 
 
 ---
@@ -288,7 +300,7 @@ Production data layer using MySQL. Implements all `StoreBackend` methods (users,
   Convert database rows to API dictionaries with ISO timestamps and correct types.
 
 - `_recalculate_role_capacity(cursor, shift_role_id)`  
-  Counts active signups (`CONFIRMED/SHOW_UP/NO_SHOW`), updates `filled_count`, and sets role status to `FULL` or `OPEN` unless role is already `CANCELLED`.
+  Counts occupied slots (`CONFIRMED/SHOW_UP/NO_SHOW` + unexpired `PENDING_CONFIRMATION` reservations), updates `filled_count`, and sets role status to `FULL` or `OPEN` unless role is already `CANCELLED`.
 
 ---
 
@@ -352,13 +364,16 @@ Production data layer using MySQL. Implements all `StoreBackend` methods (users,
 - `create_signup(shift_role_id, user_id, signup_status)`
 - `delete_signup(signup_id)`
 - `update_signup(signup_id, signup_status)`
+- `bulk_mark_shift_signups_pending(shift_id, reservation_expires_at)`
+- `expire_pending_signups(shift_id, now_utc)`
+- `reconfirm_pending_signup(signup_id, now_utc)`
 
 Signup creation occurs in a transaction:
 
 1. Lock the shift role row
 2. Ensure role and shift exist and are not cancelled
 3. Check duplicate signup
-4. Check role capacity
+4. Check reservation-aware role occupancy (confirmed/attendance + unexpired pending reservations)
 5. Insert signup
 6. Recalculate role capacity
 7. Commit transaction
@@ -368,6 +383,13 @@ Possible errors:
 - `LookupError` – missing role or shift
 - `RuntimeError` – role cancelled or full
 - `ValueError` – duplicate signup
+
+Pending reconfirmation is also transactional:
+
+1. Lock signup + role rows
+2. Reject/expire when reservation elapsed or shift started
+3. Confirm first-come-first-serve against current confirmed count
+4. Move to WAITLISTED when reduced capacity has no room
 
 ---
 
@@ -449,7 +471,8 @@ Volunteer registrations including:
 
 - shift role
 - user
-- signup status (`CONFIRMED`, `SHOW_UP`, `NO_SHOW`)
+- signup status (`CONFIRMED`, `PENDING_CONFIRMATION`, `WAITLISTED`, `CANCELLED`, `SHOW_UP`, `NO_SHOW`)
+- `reservation_expires_at` for the 48-hour reserved spot window after shift edits
 - timestamps
 
 Both the MySQL and memory backends can seed from this file.
@@ -515,7 +538,10 @@ Tables defined:
 **shift_signups**
 
 - Volunteer registrations
+- `signup_status` supports reconfirmation lifecycle (`PENDING_CONFIRMATION`, `WAITLISTED`, `CANCELLED`) plus attendance states
+- `reservation_expires_at` stores reservation expiry for pending reconfirmations
 - unique `(shift_role_id, user_id)`
+- index on `(shift_role_id, signup_status, reservation_expires_at)` for reservation-aware occupancy checks
 - cascade delete when role or user removed
 
 ---
@@ -546,8 +572,8 @@ Functions:
 `init_schema()`
 
 - Ensures database exists
-- loads `migrations/001_initial.sql`
-- applies schema
+- loads all SQL files from `migrations/` in filename order
+- applies schema scripts
 
 Script entrypoint:
 

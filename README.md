@@ -38,6 +38,7 @@ The active backend is selected at startup via the `DATA_BACKEND` environment var
 | `PATCH` | `/api/shifts/<id>` | Update shift details |
 | `DELETE` | `/api/shifts/<id>` | Cancel a shift |
 | `POST` | `/api/shift-roles/<id>/signup` | Volunteer signs up for a shift role |
+| `PATCH` | `/api/signups/<id>/reconfirm` | Volunteer confirms/cancels after shift edits |
 | `PATCH` | `/api/signups/<id>/attendance` | Mark attendance (SHOW_UP / NO_SHOW) |
 | `GET` | `/api/public/pantries/<slug>/shifts` | Public unauthenticated shift listing |
 
@@ -62,7 +63,9 @@ The system uses Firebase Authentication for identity management.
 
 ### Volunteer
 - Can browse open, non-expired shifts.
-- Can sign up for shift roles, reconfirm after shift edits, and cancel their own signups.
+- Shift edits move existing signups to `PENDING_CONFIRMATION` with a 48-hour reservation window.
+- Can reconfirm after shift edits.
+- If they cancel during reconfirmation, the signup row is removed (same as normal cancel), so they can sign up again later if capacity is available.
 
 ### Public (unauthenticated)
 - Can view open shifts for any pantry via the public endpoint using a pantry slug (e.g., `/api/public/pantries/licking-county-pantry/shifts`).

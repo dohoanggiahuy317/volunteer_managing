@@ -23,10 +23,10 @@ volunteer_managing/
 │   │
 │   ├── db/
 │   │   ├── mysql.py                # Connection pool management (get_connection)
-│   │   ├── init_schema.py          # Runs 001_initial.sql idempotently on startup
+│   │   ├── init_schema.py          # Runs all SQL files in db/migrations idempotently on startup
 │   │   ├── seed.py                 # Seeds DB from backend/data/db.json if empty
 │   │   └── migrations/
-│   │       └── 001_initial.sql     # CREATE TABLE statements for all 7 tables
+│   │       └── 001_initial.sql     # CREATE TABLE statements for core schema (incl. signup reservations)
 │   │
 │   └── data/
 │       └── db.json                 # Sample seed data (users, pantries, shifts)
@@ -50,7 +50,7 @@ volunteer_managing/
 
 ## 2. Database Schema & Table Relationships
 
-All tables are created by [backend/db/migrations/001_initial.sql](backend/db/migrations/001_initial.sql) via `init_schema()` on every Flask startup (idempotent — uses `CREATE TABLE IF NOT EXISTS`).
+All tables are created from SQL files in [backend/db/migrations/](backend/db/migrations/) via `init_schema()` on every Flask startup (idempotent — uses `CREATE TABLE IF NOT EXISTS` for the schema baseline).
 
 ```
 roles               users
@@ -102,6 +102,7 @@ role_name           full_name
     shift_role_id (FK → shift_roles, CASCADE DELETE)
     user_id       (FK → users, CASCADE DELETE)
     signup_status ← CONFIRMED | PENDING_CONFIRMATION | WAITLISTED | CANCELLED | SHOW_UP | NO_SHOW
+    reservation_expires_at ← nullable UTC datetime used for 48h reserved spots after shift edits
     UNIQUE (shift_role_id, user_id)  ← prevents double signup
 ```
 
@@ -121,7 +122,7 @@ app.py
     ├─ YES →
     │    init_schema()  [db/init_schema.py]
     │      ensure_database_exists()      ← connects without DB name, CREATE DATABASE IF NOT EXISTS
-    │      apply_sql(001_initial.sql)    ← CREATE TABLE IF NOT EXISTS × 7 tables
+    │      apply_sql(*.sql in migrations/)   ← CREATE TABLE IF NOT EXISTS baseline schema
     │    MySQLBackend()  [mysql_backend.py]
     │    backend.is_empty()?
     │      YES → seed_mysql_from_json("data/db.json")
@@ -396,7 +397,7 @@ return jsonify({"error": "Past shifts are locked", "code": "PAST_SHIFT_LOCKED"})
 | 400 | Validation failure | Missing field, duplicate signup, shift already ended |
 | 403 | Forbidden | User lacks required role, not a lead for this pantry |
 | 404 | Not found | Invalid ID in URL |
-| 409 | Conflict | Role full on reconfirm, past shift is locked |
+| 409 | Conflict | Role full on reconfirm, reservation expired, or past shift is locked |
 
 ### Frontend error handling chain
 
@@ -416,10 +417,14 @@ dashboard.js: call site catch block
   showMessage('shifts', `Failed: ${error.message}`, 'error')
   ← writes to the relevant #message-<tab> div in the DOM
 
-Special case — 409 ROLE_FULL_OR_UNAVAILABLE (volunteer-functions.js:reconfirmSignup):
+Special cases for reconfirm:
+1. `409 ROLE_FULL_OR_UNAVAILABLE` when reduced capacity no longer has room.
+2. `409 RESERVATION_EXPIRED` when the 48-hour reservation window passed.
   catch (error) {
     if error contains "ROLE_FULL_OR_UNAVAILABLE":
       showMessage('my-shifts', 'This role is full or unavailable...', 'error')
+    else if error contains "RESERVATION_EXPIRED":
+      showMessage('my-shifts', 'Your reservation expired. Please sign up again if slots are available.', 'error')
     else:
       showMessage('my-shifts', `Action failed: ${error.message}`, 'error')
   }
