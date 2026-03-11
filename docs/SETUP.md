@@ -104,7 +104,8 @@ pip install -r requirements.txt
 python app.py
 ```
 
-> **First startup note:** Flask will automatically initialize the database schema (create all tables) and seed sample data from `backend/data/db.json` if the database is empty. You should see this happen in the terminal output. No manual SQL migrations are required.
+> **First startup note:** Flask will automatically initialize the database schema (create all tables from `backend/db/migrations/001_initial.sql`) and seed sample data from `backend/data/db.json` if the database is empty.  
+> For dev, if you already have an older schema and pull schema changes, recreate/reset your local MySQL data volume so the new baseline schema is applied cleanly.
 
 ---
 

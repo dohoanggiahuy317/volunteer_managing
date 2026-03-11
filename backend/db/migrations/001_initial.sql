@@ -85,10 +85,12 @@ CREATE TABLE IF NOT EXISTS shift_signups (
   shift_role_id INT NOT NULL,
   user_id INT NOT NULL,
   signup_status VARCHAR(32) NOT NULL DEFAULT 'CONFIRMED',
+  reservation_expires_at DATETIME(6) NULL,
   created_at DATETIME(6) NOT NULL,
   UNIQUE KEY uq_shift_signups_role_user (shift_role_id, user_id),
   INDEX idx_shift_signups_shift_role_id (shift_role_id),
   INDEX idx_shift_signups_user_id (user_id),
+  INDEX idx_shift_signups_role_status_reservation (shift_role_id, signup_status, reservation_expires_at),
   CONSTRAINT fk_shift_signups_role
     FOREIGN KEY (shift_role_id) REFERENCES shift_roles(shift_role_id)
     ON DELETE CASCADE,
