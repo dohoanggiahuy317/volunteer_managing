@@ -563,7 +563,11 @@ function renderMyShiftCard(signup, now) {
     const signupStatus = String(signup.signup_status || 'UNKNOWN').toUpperCase();
     const shiftStatus = String(signup.shift_status || 'OPEN').toUpperCase();
     const attendanceInfo = getAttendanceInfo(signupStatus);
-    const showCancel = canCancelSignup(signup, now);
+    const showCancelByTime = canCancelSignup(signup, now);
+    const nonActionableStatuses = new Set(['CANCELLED', 'WAITLISTED']);
+    const showCancel = showCancelByTime
+        && !nonActionableStatuses.has(signupStatus)
+        && shiftStatus !== 'CANCELLED';
     const showSignupStatusBadge = !attendanceInfo.isMarked;
     const isPendingReconfirm = signupStatus === 'PENDING_CONFIRMATION';
     const reconfirmAvailable = Boolean(signup.reconfirm_available);
@@ -706,6 +710,8 @@ async function reconfirmMySignup(signupId, action) {
         const details = parseApiErrorDetails(error);
         if (details && details.code === 'ROLE_FULL_OR_UNAVAILABLE') {
             showMessage('my-shifts', 'This role is full or unavailable. Please cancel or pick another shift.', 'error');
+        } else if (details && details.code === 'RESERVATION_EXPIRED') {
+            showMessage('my-shifts', 'Your reservation expired. Please sign up again if slots are available.', 'error');
         } else {
             showMessage('my-shifts', `Action failed: ${error.message}`, 'error');
         }
@@ -761,6 +767,7 @@ function renderRegistrationsRowContent(shiftRegistrations) {
         const required = role.required_count || 0;
         const filled = role.filled_count || 0;
         const signups = role.signups || [];
+        const pendingReconfirmCount = Number(role.pending_reconfirm_count || 0);
 
         const signupsHtml = signups.length > 0
             ? `
@@ -818,8 +825,12 @@ function renderRegistrationsRowContent(shiftRegistrations) {
             <div class="registration-role">
                 <div class="registration-role-header">
                     <div class="registration-role-title">${escapeHtml(role.role_title || 'Untitled Role')}</div>
-                    <div class="registration-role-capacity">${filled}/${required} filled</div>
+                    <div class="registration-role-capacity">${filled}/${required} reserved</div>
                 </div>
+                ${pendingReconfirmCount > 0
+                    ? `<p class="reconfirm-note">${pendingReconfirmCount} volunteer(s) pending reconfirmation.</p>`
+                    : ''
+                }
                 ${signupsHtml}
             </div>
         `;

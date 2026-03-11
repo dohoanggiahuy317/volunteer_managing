@@ -230,13 +230,15 @@ def seed_mysql_from_json(data_path: Path, truncate: bool = False) -> None:
                     shift_role_id,
                     user_id,
                     signup_status,
+                    reservation_expires_at,
                     created_at
                 )
-                VALUES (%s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     shift_role_id = VALUES(shift_role_id),
                     user_id = VALUES(user_id),
                     signup_status = VALUES(signup_status),
+                    reservation_expires_at = VALUES(reservation_expires_at),
                     created_at = VALUES(created_at)
                 """,
                 (
@@ -244,6 +246,7 @@ def seed_mysql_from_json(data_path: Path, truncate: bool = False) -> None:
                     signup["shift_role_id"],
                     signup["user_id"],
                     signup.get("signup_status", "CONFIRMED"),
+                    parse_iso_to_dt(signup.get("reservation_expires_at")) if signup.get("reservation_expires_at") else None,
                     parse_iso_to_dt(signup.get("created_at")),
                 ),
             )
