@@ -376,9 +376,17 @@ function displayShiftCard(grid, shift) {
 // Signup for role
 async function signupForRole(roleId) {
     try {
-        await signupForShift(roleId);
-        showMessage('calendar', 'Successfully signed up!', 'success');
-        await loadCalendarShifts(); // Reload to show updated counts
+        if (!currentUser || !currentUser.user_id) {
+            throw new Error('Missing current user context');
+        }
+        const signupResult = await signupForShift(roleId, currentUser.user_id);
+        if (signupResult && signupResult.already_signed_up) {
+            showMessage('calendar', 'You already signed up for this shift.', 'error');
+        } else {
+            showMessage('calendar', 'Successfully signed up!', 'success');
+            await loadCalendarShifts(); // Reload to show updated counts
+        }
+        
 
         const myShiftsTab = document.getElementById('content-my-shifts');
         const isVolunteer = currentUser && currentUser.roles.includes('VOLUNTEER');
